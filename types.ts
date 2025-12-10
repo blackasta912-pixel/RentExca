@@ -10,7 +10,7 @@ export interface Item {
   category: string;
   stock: number;
   rentedCount: number;
-  pricePerDay: number;
+  pricePerMonth: number; // Changed from pricePerDay
   status: ItemStatus;
   imageUrl?: string;
 }
@@ -33,7 +33,7 @@ export enum TransactionStatus {
 
 export enum PaymentStatus {
   PAID = 'Lunas',
-  PARTIAL = 'DP / Sebagian',
+  PARTIAL = 'Cicil/DP',
   UNPAID = 'Belum Bayar',
 }
 
@@ -45,8 +45,10 @@ export interface Transaction {
   quantity: number;
   startDate: string; // ISO Date string
   endDate: string; // ISO Date string
-  totalAmount: number;
-  amountPaid: number;
+  totalAmount: number; // Biaya Sewa (Rental Cost only)
+  depositAmount: number; // Uang Jaminan (New Field)
+  isDepositReturned: boolean; // Status Deposit (New Field)
+  amountPaid: number; // Total Cash In (Rent + Deposit)
   paymentStatus: PaymentStatus;
   status: TransactionStatus;
   notes?: string;

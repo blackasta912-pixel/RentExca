@@ -88,92 +88,97 @@ const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants, highlightedId, o
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Data Penyewa</h2>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+        <div>
+           <h2 className="text-3xl font-bold text-slate-800 dark:text-white">Data Penyewa</h2>
+           <p className="text-lg text-slate-600 dark:text-slate-400 mt-1">Kelola informasi pelanggan dan kontak</p>
+        </div>
         <button 
           onClick={() => handleOpenModal()}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+          className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg font-bold text-lg"
         >
-          <Plus size={18} className="mr-2" />
+          <Plus size={24} className="mr-2" />
           Tambah Penyewa
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
         <div className="relative">
-          <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+          <Search size={24} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Cari nama atau no. telepon..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+            className="w-full pl-12 pr-4 py-4 border-2 border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-lg placeholder:text-slate-400"
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredTenants.map((tenant) => (
           <div 
             key={tenant.id} 
             id={`tenant-${tenant.id}`}
-            className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 hover:shadow-md transition-all duration-500 ${
-              tempHighlightId === tenant.id ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg scale-105' : ''
+            className={`bg-white dark:bg-slate-800 rounded-2xl shadow-sm border-2 border-slate-200 dark:border-slate-700 p-6 hover:shadow-xl transition-all duration-300 hover:border-blue-300 dark:hover:border-blue-700 ${
+              tempHighlightId === tenant.id ? 'ring-4 ring-blue-500/50 bg-blue-50 dark:bg-blue-900/20 shadow-xl scale-105' : ''
             }`}
           >
-            <div className="flex justify-between items-start mb-4">
-              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-lg">
+            <div className="flex justify-between items-start mb-6">
+              <div className="h-14 w-14 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold text-2xl border border-blue-200 dark:border-blue-800">
                 {tenant.name.charAt(0)}
               </div>
-              <div className="flex space-x-1">
+              <div className="flex space-x-2">
                  {onViewHistory && (
                     <button 
                         onClick={() => onViewHistory(tenant)}
-                        className="p-1.5 text-slate-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors"
+                        className="p-2 text-slate-500 hover:text-green-700 dark:hover:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors border border-transparent hover:border-green-200"
                         title="Lihat Riwayat Transaksi"
                     >
-                        <History size={16} />
+                        <History size={22} />
                     </button>
                  )}
                 <button 
                   onClick={() => handleOpenModal(tenant)}
-                  className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                  className="p-2 text-slate-500 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors border border-transparent hover:border-blue-200"
                   title="Edit Data"
                 >
-                  <Edit2 size={16} />
+                  <Edit2 size={22} />
                 </button>
                 <button 
                   onClick={() => handleDeleteClick(tenant.id)}
-                  className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                  className="p-2 text-slate-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors border border-transparent hover:border-red-200"
                   title="Hapus Data"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={22} />
                 </button>
               </div>
             </div>
             
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">{tenant.name}</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">KTP: {tenant.ktp}</p>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">{tenant.name}</h3>
+            <div className="inline-block px-3 py-1 bg-slate-100 dark:bg-slate-700 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 mb-6 border border-slate-200 dark:border-slate-600">
+                KTP: {tenant.ktp}
+            </div>
             
-            <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+            <div className="space-y-4 text-base text-slate-700 dark:text-slate-200">
               <div className="flex items-center">
-                <Phone size={16} className="mr-2 text-slate-400" />
-                <span>{tenant.phone}</span>
+                <Phone size={20} className="mr-3 text-slate-400" />
+                <span className="font-medium">{tenant.phone}</span>
               </div>
               {tenant.emergencyContact && (
-                 <div className="flex items-center text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/30 px-2 py-1 rounded w-fit">
-                    <ShieldAlert size={14} className="mr-2" />
-                    <span className="text-xs font-semibold">Darurat: {tenant.emergencyContact}</span>
+                 <div className="flex items-center text-orange-800 dark:text-orange-200 bg-orange-100 dark:bg-orange-900/30 px-3 py-2 rounded-lg w-full border border-orange-200 dark:border-orange-800/50">
+                    <ShieldAlert size={18} className="mr-2 flex-shrink-0" />
+                    <span className="text-sm font-bold">Darurat: {tenant.emergencyContact}</span>
                  </div>
               )}
               <div className="flex items-center">
-                <Mail size={16} className="mr-2 text-slate-400" />
-                {tenant.email}
+                <Mail size={20} className="mr-3 text-slate-400" />
+                <span className="break-all">{tenant.email}</span>
               </div>
               <div className="flex items-start">
-                <MapPin size={16} className="mr-2 text-slate-400 mt-0.5" />
-                <span className="flex-1">{tenant.address}</span>
+                <MapPin size={20} className="mr-3 text-slate-400 mt-1 flex-shrink-0" />
+                <span className="flex-1 leading-relaxed">{tenant.address}</span>
               </div>
             </div>
           </div>
@@ -182,12 +187,14 @@ const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants, highlightedId, o
 
        {/* Modal */}
        {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold mb-4 text-slate-800 dark:text-white">{editingTenant ? 'Edit Penyewa' : 'Tambah Penyewa Baru'}</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-xl w-full p-8 max-h-[95vh] overflow-y-auto border-2 border-slate-200 dark:border-slate-700">
+            <h3 className="text-2xl font-bold mb-6 text-slate-800 dark:text-white border-b border-slate-200 pb-4">
+                {editingTenant ? 'Edit Data Penyewa' : 'Tambah Penyewa Baru'}
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-base font-bold text-slate-700 dark:text-slate-300 mb-2">
                   Nama Lengkap <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -195,11 +202,11 @@ const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants, highlightedId, o
                   type="text"
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                  className="w-full px-4 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-lg font-medium"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-base font-bold text-slate-700 dark:text-slate-300 mb-2">
                   No. KTP / Identitas <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -207,12 +214,12 @@ const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants, highlightedId, o
                   type="text"
                   value={formData.ktp}
                   onChange={e => setFormData({...formData, ktp: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                  className="w-full px-4 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-lg font-medium"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-base font-bold text-slate-700 dark:text-slate-300 mb-2">
                     No. Telepon <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -220,11 +227,11 @@ const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants, highlightedId, o
                     type="tel"
                     value={formData.phone}
                     onChange={e => setFormData({...formData, phone: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-4 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-lg font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-base font-bold text-slate-700 dark:text-slate-300 mb-2">
                     No. HP Darurat
                   </label>
                   <input
@@ -232,21 +239,21 @@ const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants, highlightedId, o
                     value={formData.emergencyContact || ''}
                     onChange={e => setFormData({...formData, emergencyContact: e.target.value})}
                     placeholder="Keluarga/Kerabat"
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-4 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-lg font-medium"
                   />
                 </div>
               </div>
               <div>
-                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+                 <label className="block text-base font-bold text-slate-700 dark:text-slate-300 mb-2">Email</label>
                  <input
                     type="email"
                     value={formData.email}
                     onChange={e => setFormData({...formData, email: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                    className="w-full px-4 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-lg font-medium"
                   />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-base font-bold text-slate-700 dark:text-slate-300 mb-2">
                   Alamat <span className="text-red-500">*</span>
                 </label>
                 <textarea
@@ -254,23 +261,23 @@ const Tenants: React.FC<TenantsProps> = ({ tenants, setTenants, highlightedId, o
                   rows={3}
                   value={formData.address}
                   onChange={e => setFormData({...formData, address: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                  className="w-full px-4 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white text-lg font-medium"
                 />
               </div>
               
-              <div className="flex justify-end space-x-3 mt-6">
+              <div className="flex justify-end space-x-4 mt-8 pt-4 border-t border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                  className="px-6 py-3 border-2 border-slate-300 dark:border-slate-600 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 font-bold text-lg"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold text-lg shadow-lg hover:shadow-xl transition-all"
                 >
-                  Simpan
+                  Simpan Data
                 </button>
               </div>
             </form>

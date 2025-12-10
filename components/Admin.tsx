@@ -72,7 +72,7 @@ const Admin: React.FC<AdminProps> = ({ settings, onUpdateSettings }) => {
                         value={formData.name}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                        placeholder="Contoh: RentalExca Pro"
+                        placeholder="Contoh: RentalScaffolding Pro"
                     />
                 </div>
                 <div>

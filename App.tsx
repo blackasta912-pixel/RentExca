@@ -6,6 +6,8 @@ import Tenants from './components/Tenants';
 import Cashier from './components/Cashier';
 import Login from './components/Login';
 import Admin from './components/Admin';
+import AdminDashboard from './components/AdminDashboard';
+import DepositManager from './components/DepositManager';
 import { MOCK_ITEMS, MOCK_TENANTS, MOCK_TRANSACTIONS } from './constants';
 import { Item, Tenant, Transaction, User, StoreSettings } from './types';
 import { PanelLeft, Sun, Moon } from 'lucide-react';
@@ -35,13 +37,13 @@ const App: React.FC = () => {
 
   // Store Settings State
   const [storeSettings, setStoreSettings] = useState<StoreSettings>({
-    name: 'RentalExca Pro',
-    address: 'Jl. Merdeka Utama No. 88, Jakarta Pusat',
+    name: 'RentalScaffolding',
+    address: 'Jl. Konstruksi Raya No. 88, Jakarta Industrial Park',
     phone: '0812-3456-7890',
-    email: 'info@rentalexcapro.com',
+    email: 'info@rentalscaffolding.com',
     bankName: 'BCA',
     accountNumber: '8830-1234-5678',
-    accountName: 'RentalExca Corporate',
+    accountName: 'RentalScaffolding Corporate',
     qrisUrl: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg'
   });
 
@@ -100,6 +102,11 @@ const App: React.FC = () => {
     setCurrentView('cashier');
   };
 
+  const handleViewAllTransactions = () => {
+    setCashierInitData({ tab: 'history', search: '' });
+    setCurrentView('cashier');
+  };
+
   const handleViewChange = (view: string) => {
     if (view === 'cashier') {
         // Reset cashier filters if navigating manually via sidebar
@@ -115,7 +122,15 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
-        return <Dashboard transactions={transactions} items={items} tenants={tenants} storeSettings={storeSettings} />;
+        return (
+          <Dashboard 
+            transactions={transactions} 
+            items={items} 
+            tenants={tenants} 
+            storeSettings={storeSettings} 
+            onViewAllTransactions={handleViewAllTransactions}
+          />
+        );
       case 'inventory':
         return <Inventory items={items} setItems={setItems} />;
       case 'tenants':
@@ -141,6 +156,22 @@ const App: React.FC = () => {
             storeSettings={storeSettings}
           />
         );
+      case 'deposit':
+        return (
+          <DepositManager
+            transactions={transactions}
+            setTransactions={setTransactions}
+            tenants={tenants}
+          />
+        );
+      case 'admin_dashboard':
+        return (
+          <AdminDashboard
+            transactions={transactions} 
+            items={items}
+            storeSettings={storeSettings}
+          />
+        );
       case 'admin':
         return (
           <Admin 
@@ -149,7 +180,15 @@ const App: React.FC = () => {
           />
         );
       default:
-        return <Dashboard transactions={transactions} items={items} tenants={tenants} storeSettings={storeSettings} />;
+        return (
+          <Dashboard 
+            transactions={transactions} 
+            items={items} 
+            tenants={tenants} 
+            storeSettings={storeSettings} 
+            onViewAllTransactions={handleViewAllTransactions}
+          />
+        );
     }
   };
 

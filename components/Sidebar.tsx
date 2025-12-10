@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, ShoppingCart, Users, Package, LogOut, X, Settings } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Users, Package, LogOut, X, Settings, Shield, Banknote } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 
 interface SidebarProps {
@@ -16,29 +16,32 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, onLogout, 
   const menuItems = [
     { id: 'dashboard', label: 'Dasbor', icon: LayoutDashboard },
     { id: 'cashier', label: 'Kasir & Transaksi', icon: ShoppingCart },
+    { id: 'deposit', label: 'Deposit & Jaminan', icon: Banknote }, 
     { id: 'inventory', label: 'Inventaris Stok', icon: Package },
     { id: 'tenants', label: 'Data Penyewa', icon: Users },
+    { id: 'admin_dashboard', label: 'Admin', icon: Shield },
     { id: 'admin', label: 'Pengaturan', icon: Settings },
   ];
 
   return (
     <>
       <div 
-        className={`h-screen w-64 bg-slate-900 text-white flex flex-col fixed left-0 top-0 z-50 transition-transform duration-300 ease-in-out shadow-xl ${
+        className={`h-screen w-64 bg-slate-900 text-white flex flex-col fixed left-0 top-0 z-50 transition-transform duration-300 ease-in-out shadow-2xl ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-6 border-b border-slate-700 flex justify-between items-center">
+        <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-950">
           <div>
-              <h1 className="text-xl font-bold tracking-tight">RentalExca Pro</h1>
-              <p className="text-xs text-slate-400 mt-1">Sistem Manajemen Rental</p>
+              <h1 className="text-xl font-bold tracking-tight text-yellow-400">RentalScaffolding</h1>
+              <p className="text-xs text-slate-300 mt-1">Sistem Manajemen</p>
           </div>
           {/* Mobile Close Button */}
           <button 
             onClick={onCloseMobile}
-            className="md:hidden text-slate-400 hover:text-white transition-colors"
+            className="md:hidden text-slate-300 hover:text-white bg-slate-800 p-2 rounded-lg transition-colors"
+            aria-label="Tutup Menu"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
@@ -55,26 +58,26 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, onLogout, 
                     onCloseMobile();
                   }
                 }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                   isActive 
-                    ? 'bg-blue-600 text-white shadow-md' 
+                    ? 'bg-blue-600 text-white shadow-lg ring-1 ring-blue-500' 
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                 }`}
               >
-                <Icon size={20} />
-                <span className="font-medium">{item.label}</span>
+                <Icon size={20} strokeWidth={2} />
+                <span className="font-medium text-sm">{item.label}</span>
               </button>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-slate-700 bg-slate-950">
           <button
             onClick={() => setIsLogoutModalOpen(true)}
-            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-red-400 hover:bg-slate-800 hover:text-red-300 transition-colors"
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-red-300 bg-red-900/20 hover:bg-red-900/40 hover:text-red-200 transition-colors border border-red-900/30"
           >
-            <LogOut size={20} />
-            <span className="font-medium">Keluar</span>
+            <LogOut size={20} strokeWidth={2} />
+            <span className="font-bold text-sm">Keluar Aplikasi</span>
           </button>
         </div>
       </div>
