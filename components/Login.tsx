@@ -1,401 +1,819 @@
-import React, { useState, useEffect } from 'react';
-import { Lock, User, ShieldCheck, RefreshCw, KeyRound, CheckCircle, ChevronRight, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { User } from '../types';
+import { ShieldCheck, User as UserIcon, Lock, Mail, HardHat, CheckCircle2, Smartphone, MessageSquare, ArrowLeft, RefreshCw, Shield, ChevronRight, LayoutGrid, KeyRound, AlertCircle, Timer, Edit2 } from 'lucide-react';
 
 interface LoginProps {
-  onLogin: () => void;
+  onLogin: (user: User) => void;
 }
 
-type AuthMode = 'LOGIN' | 'REGISTER' | 'VERIFY' | 'FORGOT_REQUEST' | 'FORGOT_VERIFY' | 'RESET_PASSWORD';
-
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
-  const [mode, setMode] = useState<AuthMode>('LOGIN');
-  const [isAnimating, setIsAnimating] = useState(false);
+  // View State: 'selection' (Choose Role) or 'auth' (Login/Register/Forgot Form)
+  const [viewState, setViewState] = useState<'selection' | 'auth'>('selection');
   
-  // Animation State for Mascot
-  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+  // Expanded activeTab to include 'forgot'
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'forgot'>('login');
   
-  // Login State
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  
-  // Register State
-  const [regMethod, setRegMethod] = useState<'EMAIL' | 'PHONE'>('EMAIL'); 
-  const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regUsername, setRegUsername] = useState('');
-  const [regPassword, setRegPassword] = useState('');
+  // Registration States
+  const [regStep, setRegStep] = useState<1 | 2>(1); // 1: Input Data, 2: Verification (OTP)
+  const [regMethod, setRegMethod] = useState<'email' | 'phone'>('email');
+  const [selectedRole, setSelectedRole] = useState<'admin' | 'cashier'>('admin'); // Used for logic context
+  const [otpCode, setOtpCode] = useState('');
+  const [resendTimer, setResendTimer] = useState(0); // Timer for resend button
 
-  // Forgot Password State
-  const [resetTarget, setResetTarget] = useState('');
+  // Forgot Password States
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1); // 1: Check Contact, 2: Reset Password
+  const [resetContact, setResetContact] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-
-  // Captcha State
-  const [captchaText, setCaptchaText] = useState('');
-  const [captchaInput, setCaptchaInput] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
   
-  // Verification State
-  const [verificationCode, setVerificationCode] = useState(''); 
-  const [generatedCode, setGeneratedCode] = useState('');
-  const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-
-  // Generate random captcha code
+  // --- CAPTCHA STATE (ALPHANUMERIC) ---
   const generateCaptcha = () => {
+    // Simple Alphanumeric Set (Readable)
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
     let result = '';
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 4; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    setCaptchaText(result);
+    return result;
   };
 
+  const [captchaCode, setCaptchaCode] = useState(generateCaptcha());
+  const [captchaInput, setCaptchaInput] = useState('');
+  const [captchaError, setCaptchaError] = useState(false);
+  
+  // Ref for auto-focusing
+  const captchaInputRef = useRef<HTMLInputElement>(null);
+
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    fullName: '',
+    contact: '', // Holds email or phone based on regMethod
+  });
+
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [registerSuccess, setRegisterSuccess] = useState(false);
+
+  // Background Image (Scaffolding/Construction theme)
+  const BG_IMAGE = "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=2070&auto=format&fit=crop";
+
+  // Reset Captcha when tab changes
   useEffect(() => {
-    generateCaptcha();
-  }, []);
+    setCaptchaCode(generateCaptcha());
+    setCaptchaInput('');
+    setCaptchaError(false);
+  }, [activeTab, viewState]);
+
+  // Handle Resend Timer Countdown
+  useEffect(() => {
+    let interval: any;
+    if (regStep === 2 && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [regStep, resendTimer]);
 
   const handleRefreshCaptcha = () => {
-    generateCaptcha();
+    setCaptchaCode(generateCaptcha());
     setCaptchaInput('');
+    setCaptchaError(false);
+    // Auto focus back to input
+    captchaInputRef.current?.focus();
   };
 
-  const switchMode = (newMode: AuthMode) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleRoleSelection = (role: 'admin' | 'cashier') => {
+      setSelectedRole(role);
+      setViewState('auth');
+      setActiveTab('login'); // Always default to login first
+      // Optional: Clear form or prepopulate for demo purposes
+      setFormData({ username: '', password: '', fullName: '', contact: '' });
+  };
+
+  const handleBackToSelection = () => {
+      if (activeTab === 'forgot') {
+          setActiveTab('login');
+          setForgotStep(1);
+          setResetContact('');
+          setNewPassword('');
+          setConfirmNewPassword('');
+          return;
+      }
+      setViewState('selection');
+      setRegisterSuccess(false);
+      setRegStep(1);
+  };
+
+  const handleAdminLogin = () => {
+    onLogin({
+      username: 'admin',
+      name: 'Admin Utama',
+      role: 'admin'
+    });
+  };
+
+  const handleCashierLogin = () => {
+    onLogin({
+      username: 'cashier',
+      name: 'Kasir Shift 1',
+      role: 'cashier'
+    });
+  };
+
+  // Step 1: Send OTP / Proceed to Verification
+  const handleRegisterStep1 = (e: React.FormEvent) => {
+    e.preventDefault();
     setIsAnimating(true);
-    setError('');
-    setSuccessMsg('');
-    setVerificationCode(''); // Reset OTP input when switching
-    setIsPasswordFocused(false); // Reset mascot
+    
+    // Simulate API delay for sending OTP
     setTimeout(() => {
-        setMode(newMode);
         setIsAnimating(false);
-    }, 300);
+        setRegStep(2); // Move to OTP step
+        setResendTimer(30); // Start 30s countdown
+    }, 1500);
   };
 
-  // --- LOGIN HANDLER ---
+  const handleResendOtp = () => {
+      setResendTimer(30);
+      // Logic to resend OTP via API would go here
+      alert(`Kode verifikasi baru telah dikirim ke ${formData.contact}`);
+  };
+
+  // Step 2: Verify OTP and Finalize Registration
+  const handleVerifyOtp = (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsAnimating(true);
+
+      // Simulate verification
+      setTimeout(() => {
+        setRegisterSuccess(true);
+        setIsAnimating(false);
+        // Auto switch back to login after 2 seconds
+        setTimeout(() => {
+            setRegisterSuccess(false);
+            setRegStep(1);
+            setOtpCode('');
+            setFormData({ ...formData, contact: '', password: '', fullName: '' });
+            setActiveTab('login');
+        }, 2000);
+      }, 1500);
+  };
+
   const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    // Validate Captcha
-    if (captchaInput.toUpperCase() !== captchaText) {
-      setError('Kode Captcha tidak sesuai.');
-      generateCaptcha();
-      setCaptchaInput('');
-      return;
-    }
-
-    if ((username === 'admin' && password === 'admin') || (username === regUsername && password === regPassword && regUsername !== '')) {
-      onLogin();
-    } else {
-      setError('Username atau Password salah.');
-      generateCaptcha();
-      setCaptchaInput('');
-    }
-  };
-
-  // --- REGISTER HANDLER ---
-  const handleRegisterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    // Dynamic Validation based on method
-    const isContactValid = regMethod === 'EMAIL' ? regEmail : regPhone;
-
-    if (!regName || !regUsername || !regPassword || !isContactValid) {
-      setError(`Mohon lengkapi seluruh data pendaftaran (${regMethod === 'EMAIL' ? 'Email' : 'No. HP'} wajib diisi).`);
-      return;
-    }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(otp);
-    
-    // Simulate Sending
-    const target = regMethod === 'EMAIL' ? regEmail : regPhone;
-    setTimeout(() => {
-        alert(`[SISTEM VERIFIKASI]\n\nKode OTP Pendaftaran: ${otp}\n\n(Dikirim ke ${target})`);
-    }, 500);
-    
-    switchMode('VERIFY');
-    setSuccessMsg(`Kode OTP telah dikirim ke ${regMethod === 'EMAIL' ? 'email' : 'nomor HP'} Anda.`);
-  };
-
-  // --- VERIFICATION HANDLER (REGISTER) ---
-  const handleVerifySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (verificationCode === generatedCode) {
-      alert('Selamat! Akun Anda berhasil diverifikasi.');
-      switchMode('LOGIN');
-      setUsername(regUsername);
-      setPassword(regPassword);
-      setSuccessMsg('Akun aktif. Silakan login.');
-      setCaptchaInput('');
-      generateCaptcha();
-    } else {
-      setError('Kode OTP salah. Silakan periksa kembali.');
-    }
-  };
-
-  // ... (Other handlers omitted for brevity but logic remains same) ...
-  const handleForgotRequestSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      // ... same logic ...
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedCode(otp);
-      switchMode('FORGOT_VERIFY');
-  };
-   const handleForgotVerifySubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      // ... same logic ...
-      switchMode('RESET_PASSWORD');
-  };
-  const handleResetPasswordSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      // ... same logic ...
-      switchMode('LOGIN');
-  };
-  const handleResendCode = () => {
-    // ... same logic ...
-  };
 
+      // Captcha Validation (String Check) - Kept only for Login
+      if (captchaInput.toUpperCase() !== captchaCode) {
+        setCaptchaError(true);
+        setCaptchaCode(generateCaptcha()); // Reset code on error
+        setCaptchaInput('');
+        captchaInputRef.current?.focus(); // Focus back to input on error
+        return;
+      }
 
-  const getHeaderTitle = () => {
-      switch(mode) {
-          case 'LOGIN': return 'Selamat Datang';
-          case 'REGISTER': return 'Buat Akun Baru';
-          case 'VERIFY': return 'Verifikasi Pendaftaran';
-          case 'FORGOT_REQUEST': return 'Lupa Password';
-          case 'FORGOT_VERIFY': return 'Verifikasi Identitas';
-          case 'RESET_PASSWORD': return 'Buat Password Baru';
-          default: return '';
+      // Mock validation logic based on input or selected role
+      if (selectedRole === 'admin') {
+          handleAdminLogin();
+      } else {
+          handleCashierLogin();
       }
   };
 
-  const getHeaderDesc = () => {
-      switch(mode) {
-          case 'LOGIN': return 'Silakan masuk untuk akses dashboard.';
-          case 'REGISTER': return 'Lengkapi data diri untuk memulai.';
-          case 'VERIFY': return 'Masukkan kode OTP pendaftaran.';
-          case 'FORGOT_REQUEST': return 'Masukkan kontak terdaftar untuk reset.';
-          case 'FORGOT_VERIFY': return 'Masukkan kode OTP reset password.';
-          case 'RESET_PASSWORD': return 'Pastikan password aman & mudah diingat.';
-          default: return '';
+  // --- FORGOT PASSWORD HANDLERS ---
+  
+  const handleForgotCheckContact = (e: React.FormEvent) => {
+      e.preventDefault();
+      setResetLoading(true);
+      
+      // Simulate checking database
+      setTimeout(() => {
+          setResetLoading(false);
+          setForgotStep(2); // Move to password input
+      }, 1500);
+  };
+
+  const handleResetPassword = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (newPassword !== confirmNewPassword) {
+          alert("Password tidak cocok!");
+          return;
       }
+      
+      setResetLoading(true);
+      
+      // Simulate updating password
+      setTimeout(() => {
+          setResetLoading(false);
+          setResetSuccess(true);
+          
+          // Redirect to login after success
+          setTimeout(() => {
+              setResetSuccess(false);
+              setForgotStep(1);
+              setResetContact('');
+              setNewPassword('');
+              setConfirmNewPassword('');
+              setActiveTab('login');
+          }, 2500);
+      }, 1500);
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 font-sans selection:bg-blue-500 selection:text-white">
-      
-      {/* LEFT SIDE - VISUAL (Tetap sama sesuai request background) */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-slate-900">
-        <div 
-            className="absolute inset-0 bg-cover bg-center opacity-40 transition-transform duration-10000 hover:scale-105"
-            style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=2070&auto=format&fit=crop")' }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-slate-900/40" />
-        
-        <div className="relative z-10 p-16 flex flex-col justify-between h-full w-full">
-            <div className="flex items-center gap-4">
-                <div className="bg-blue-600 p-4 rounded-2xl shadow-xl shadow-blue-900/50">
-                    <ShieldCheck size={40} className="text-white" />
-                </div>
-                <div>
-                    <h1 className="text-3xl font-bold text-white tracking-tight">RentalScaffolding</h1>
-                    <p className="text-slate-300 text-sm font-semibold tracking-widest uppercase">Enterprise Solution</p>
-                </div>
-            </div>
+    <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-slate-900">
+       {/* Background Image with Overlay */}
+       <div 
+        className="absolute inset-0 z-0 bg-cover bg-center"
+        style={{ backgroundImage: `url('${BG_IMAGE}')` }}
+       >
+         <div className="absolute inset-0 bg-slate-900/85 backdrop-blur-[2px]"></div>
+       </div>
 
-            <div className="max-w-lg">
-                <h2 className="text-5xl font-extrabold text-white mb-6 leading-tight">
-                    Kelola Aset Scaffolding dengan <span className="text-blue-500">Presisi</span>.
+       {/* Main Card Container */}
+       <div className="relative z-10 w-full max-w-5xl bg-white dark:bg-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-slate-700/50 animate-scale-up">
+          
+          {/* Left Side: Visual Branding */}
+          <div className="w-full md:w-5/12 bg-blue-600 relative overflow-hidden flex flex-col justify-between p-8 md:p-12 text-white">
+             {/* Pattern Overlay */}
+             <div className="absolute inset-0 bg-gradient-to-br from-blue-700 to-blue-900 opacity-90"></div>
+             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '30px 30px' }}></div>
+             
+             {/* Content */}
+             <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2.5 bg-white/20 backdrop-blur-md rounded-xl border border-white/20 shadow-lg">
+                        <LayoutGrid size={28} className="text-white" />
+                    </div>
+                    <span className="font-bold text-xl tracking-wide">RentalScaffolding</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-extrabold leading-tight mb-4">
+                    Sistem Manajemen Profesional
                 </h2>
-                <p className="text-slate-200 text-xl leading-relaxed font-medium">
-                    Platform manajemen inventaris perancah dan penyewaan alat konstruksi yang terintegrasi, aman, dan mudah digunakan.
+                <p className="text-blue-100 text-lg leading-relaxed">
+                    Solusi terintegrasi untuk pengelolaan stok, penyewaan, dan laporan keuangan bisnis scaffolding Anda.
                 </p>
-            </div>
+             </div>
 
-            <div className="text-slate-400 text-sm font-medium">
-                &copy; {new Date().getFullYear()} RentalScaffolding Enterprise. All rights reserved.
-            </div>
-        </div>
-      </div>
-
-      {/* RIGHT SIDE - FORM CONTAINER (Dirapikan Proporsinya) */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 overflow-y-auto">
-        <div className={`w-full max-w-md transition-all duration-300 relative ${isAnimating ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
-            
-            {/* Mascot SVG (Ukuran disesuaikan agar lebih proporsional) */}
-            <div className="flex justify-center mb-6">
-                <div className="relative w-32 h-32 bg-white dark:bg-slate-800 rounded-full shadow-2xl border-4 border-slate-200 dark:border-slate-700 overflow-hidden group">
-                     {/* ... Same SVG content ... */}
-                     <svg viewBox="0 0 120 120" className="w-full h-full">
-                        <rect x="0" y="0" width="120" height="120" fill="#f1f5f9" className="dark:fill-slate-700" />
-                        <path d="M20 120 Q60 125 100 120 L100 95 Q60 85 20 95 Z" fill="#3b82f6" />
-                        <path d="M50 95 L60 120 L70 95" fill="#1e40af" />
-                        <g>
-                            <rect x="45" y="80" width="30" height="20" fill="#ffdbac" />
-                            <rect x="35" y="40" width="50" height="55" rx="12" fill="#ffdbac" />
-                            <circle cx="33" cy="65" r="4" fill="#ffdbac" />
-                            <circle cx="87" cy="65" r="4" fill="#ffdbac" />
-                            <g>
-                                <circle cx="50" cy="60" r="4" fill="#1e293b" />
-                                <circle cx="70" cy="60" r="4" fill="#1e293b" />
-                                <path d="M45 53 Q50 50 55 53" stroke="#1e293b" strokeWidth="2" fill="none" />
-                                <path d="M65 53 Q70 50 75 53" stroke="#1e293b" strokeWidth="2" fill="none" />
-                            </g>
-                            <g className={`transition-opacity duration-500 delay-100 ${isPasswordFocused ? 'opacity-100' : 'opacity-0'}`}>
-                                <ellipse cx="45" cy="70" rx="7" ry="4" fill="#fecaca" opacity="0.6" />
-                                <ellipse cx="75" cy="70" rx="7" ry="4" fill="#fecaca" opacity="0.6" />
-                            </g>
-                            <path d="M53 78 Q60 82 67 78" stroke="#1e293b" strokeWidth="2" fill="none" strokeLinecap="round" />
-                        </g>
-                        <g className="transition-transform duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)" transform={isPasswordFocused ? "translate(0, 15)" : "translate(0, 0)"}>
-                            <path d="M25 45 C25 15 95 15 95 45" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1" />
-                            <rect x="25" y="40" width="70" height="10" fill="#ffffff" />
-                            <path d="M20 45 L100 45 L100 52 Q60 56 20 52 Z" fill="#e2e8f0" stroke="#cbd5e1" strokeWidth="1" />
-                            <rect x="47" y="22" width="26" height="14" rx="2" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
-                            <text x="60" y="32" fontFamily="Arial, sans-serif" fontSize="9" fontWeight="800" fill="#1e293b" textAnchor="middle" style={{ userSelect: 'none' }}>SNI</text>
-                            <path d="M35 25 Q45 20 50 25" stroke="rgba(255,255,255,0.8)" strokeWidth="3" strokeLinecap="round" fill="none" />
-                        </g>
-                        <g className="transition-transform duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)" transform={isPasswordFocused ? "translate(0, -65)" : "translate(0, 40)"}>
-                            <g transform="translate(30, 120)"><circle cx="0" cy="0" r="10" fill="#ffdbac" stroke="#f1dcb5" strokeWidth="1"/><path d="M-5 5 Q0 10 5 5" stroke="#e0c09e" strokeWidth="2" fill="none"/></g>
-                            <g transform="translate(90, 120)"><circle cx="0" cy="0" r="10" fill="#ffdbac" stroke="#f1dcb5" strokeWidth="1"/><path d="M-5 5 Q0 10 5 5" stroke="#e0c09e" strokeWidth="2" fill="none"/></g>
-                        </g>
-                    </svg>
+             <div className="relative z-10 mt-8">
+                <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/10">
+                    <div className="bg-yellow-400 p-2 rounded-lg text-slate-900">
+                        <HardHat size={24} />
+                    </div>
+                    <div>
+                        <p className="font-bold text-sm">Standar Keamanan Tinggi</p>
+                        <p className="text-xs text-blue-100 opacity-80">Memastikan setiap unit terdata dengan baik.</p>
+                    </div>
                 </div>
-            </div>
-
-            {/* Dynamic Header */}
-            <div className="mb-6 text-center">
-                <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-2">
-                    {getHeaderTitle()}
-                </h2>
-                <p className="text-base text-slate-500 dark:text-slate-400">
-                    {getHeaderDesc()}
+                <p className="text-xs text-blue-200 mt-6 font-medium">
+                    &copy; {new Date().getFullYear()} RentalScaffolding Enterprise System
                 </p>
-            </div>
+             </div>
+          </div>
 
-            {/* Error / Success Alerts */}
-            {error && (
-                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-600 text-red-800 dark:text-red-300 text-sm font-medium rounded-r flex items-start animate-fade-in shadow-sm">
-                    <AlertCircle size={20} className="mr-3 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">{error}</div>
-                </div>
-            )}
-            {successMsg && !error && (
-                <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border-l-4 border-green-600 text-green-800 dark:text-green-300 text-sm font-medium rounded-r flex items-center animate-fade-in shadow-sm">
-                    <CheckCircle size={20} className="mr-3 flex-shrink-0"/>
-                    {successMsg}
-                </div>
-            )}
+          {/* Right Side: Dynamic Content */}
+          <div className="w-full md:w-7/12 p-8 md:p-12 bg-white dark:bg-slate-900 flex flex-col justify-center relative">
+             
+             {/* 
+                VIEW 1: SELECTION SCREEN 
+             */}
+             {viewState === 'selection' && (
+                 <div className="animate-fade-in w-full max-w-md mx-auto">
+                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Selamat Datang</h1>
+                     <p className="text-slate-500 dark:text-slate-400 mb-8">Silakan pilih akses untuk melanjutkan.</p>
 
-            {/* --- FORM: LOGIN --- */}
-            {mode === 'LOGIN' && (
-                <form onSubmit={handleLoginSubmit} className="space-y-5">
-                    <div className="space-y-1.5">
-                        <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Username</label>
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                                <User size={20} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                            </div>
-                            <input
-                                type="text"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-slate-900 dark:text-white text-base placeholder:text-slate-400 font-medium"
-                                placeholder="Masukkan username"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <div className="flex justify-between items-center ml-1">
-                            <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Password</label>
-                            <button 
-                                type="button"
-                                onClick={() => switchMode('FORGOT_REQUEST')}
-                                className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline px-1 py-0.5 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                Lupa Password?
-                            </button>
-                        </div>
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                                <Lock size={20} className="text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                            </div>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                onFocus={() => setIsPasswordFocused(true)}
-                                onBlur={() => setIsPasswordFocused(false)}
-                                className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 outline-none transition-all text-slate-900 dark:text-white text-base placeholder:text-slate-400 font-medium"
-                                placeholder="••••••••"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    {/* Captcha - More Compact & Aligned */}
-                    <div className="p-4 bg-slate-50/80 dark:bg-slate-900/50 border-2 border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
-                         <div className="flex justify-between items-center">
-                             <label className="text-xs font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <ShieldCheck size={14} /> Keamanan
-                             </label>
-                             <button type="button" onClick={handleRefreshCaptcha} className="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                                 <RefreshCw size={12}/> Refresh Kode
-                             </button>
-                         </div>
-                         <div className="grid grid-cols-2 gap-3">
-                             <div 
-                                className="flex items-center justify-center bg-white dark:bg-slate-800 rounded-lg border-2 border-slate-300 dark:border-slate-600 text-xl font-mono font-bold text-slate-800 dark:text-slate-200 tracking-widest shadow-sm select-none"
-                                style={{ backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', backgroundSize: '6px 6px' }}
-                             >
-                                 {captchaText}
+                     <div className="grid grid-cols-1 gap-4">
+                         <button 
+                            onClick={() => handleRoleSelection('admin')}
+                            className="group relative flex items-center p-5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-all duration-300 text-left"
+                         >
+                             <div className="p-3 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600 mr-5 group-hover:scale-110 transition-transform">
+                                 <ShieldCheck size={32} className="text-blue-600 dark:text-blue-400" />
                              </div>
-                             <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <KeyRound size={18} className="text-slate-400" />
-                                </div>
-                                <input 
-                                    type="text"
-                                    value={captchaInput}
-                                    onChange={(e) => setCaptchaInput(e.target.value)}
-                                    className="w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 rounded-lg text-base focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 outline-none uppercase placeholder:normal-case font-bold text-center"
-                                    placeholder="Ketik Kode"
-                                    required
-                                />
+                             <div className="flex-1">
+                                 <h3 className="text-lg font-bold text-slate-800 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">Masuk Sebagai Admin</h3>
+                                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Kelola stok, keuangan, dan pengaturan.</p>
                              </div>
-                         </div>
-                    </div>
+                             <ChevronRight className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+                         </button>
 
-                    <button
-                        type="submit"
-                        className="w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg rounded-xl shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center"
+                         <button 
+                            onClick={() => handleRoleSelection('cashier')}
+                            className="group relative flex items-center p-5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/10 transition-all duration-300 text-left"
+                         >
+                             <div className="p-3 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600 mr-5 group-hover:scale-110 transition-transform">
+                                 <UserIcon size={32} className="text-green-600 dark:text-green-400" />
+                             </div>
+                             <div className="flex-1">
+                                 <h3 className="text-lg font-bold text-slate-800 dark:text-white group-hover:text-green-700 dark:group-hover:text-green-300 transition-colors">Masuk Sebagai Kasir</h3>
+                                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Proses transaksi dan data penyewa.</p>
+                             </div>
+                             <ChevronRight className="text-slate-300 group-hover:text-green-500 transition-colors" />
+                         </button>
+                     </div>
+                 </div>
+             )}
+
+             {/* 
+                VIEW 2: AUTH SCREEN (Login/Register/Forgot Form) 
+             */}
+             {viewState === 'auth' && (
+                 <div className="max-w-md w-full mx-auto mt-10 md:mt-0 animate-scale-up">
+                    
+                    {/* Back Button */}
+                    <button 
+                        onClick={handleBackToSelection}
+                        className="flex items-center text-sm font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white transition-colors mb-6"
                     >
-                        Masuk Sekarang <ChevronRight size={20} className="ml-2" strokeWidth={3} />
+                        <ArrowLeft size={18} className="mr-2" /> 
+                        {activeTab === 'forgot' ? 'Kembali Login' : 'Kembali Pilih Akses'}
                     </button>
 
-                    <div className="text-center pt-2">
-                        <span className="text-slate-500 dark:text-slate-400 text-sm">Belum memiliki akun? </span>
-                        <button 
-                            type="button"
-                            onClick={() => switchMode('REGISTER')}
-                            className="text-blue-700 dark:text-blue-400 font-bold text-sm hover:underline px-1"
-                        >
-                            Daftar Gratis
-                        </button>
-                    </div>
-                </form>
-            )}
-            
-            {/* ... Other modes would follow similar styling upgrades ... */}
-            
-        </div>
-      </div>
+                    {/* Header Text */}
+                    {!registerSuccess && !resetSuccess && (
+                        <div className="mb-6">
+                            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                                {activeTab === 'login' 
+                                    ? `Login ${selectedRole === 'admin' ? 'Administrator' : 'Kasir'}`
+                                    : activeTab === 'register' && regStep === 1 
+                                        ? 'Buat Akun Baru' 
+                                        : activeTab === 'forgot'
+                                            ? 'Reset Password'
+                                            : 'Verifikasi Akun'}
+                            </h1>
+                            <p className="text-slate-500 dark:text-slate-400">
+                                {activeTab === 'login' 
+                                    ? 'Silakan masukkan kredensial Anda untuk masuk.' 
+                                    : activeTab === 'forgot'
+                                        ? (forgotStep === 1 ? 'Masukkan kontak terdaftar untuk pemulihan.' : 'Buat password baru untuk akun Anda.')
+                                        : regStep === 1
+                                            ? 'Daftarkan toko atau cabang baru Anda.'
+                                            : `Masukkan kode 6 digit yang telah dikirim ke ${regMethod === 'email' ? 'Email' : 'WhatsApp'} Anda.`}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Tab Switcher */}
+                    {!registerSuccess && !resetSuccess && regStep === 1 && activeTab !== 'forgot' && (
+                        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mb-6">
+                            <button 
+                                onClick={() => setActiveTab('login')}
+                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                                    activeTab === 'login' 
+                                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-md' 
+                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                }`}
+                            >
+                                Masuk
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('register')}
+                                className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                                    activeTab === 'register' 
+                                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-md' 
+                                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                                }`}
+                            >
+                                Daftar
+                            </button>
+                        </div>
+                    )}
+
+                    {/* --- CONTENT SWITCER --- */}
+                    {activeTab === 'forgot' ? (
+                        // --- FORGOT PASSWORD FLOW ---
+                        resetSuccess ? (
+                            <div className="bg-green-50 dark:bg-green-900/20 p-8 rounded-2xl border border-green-200 dark:border-green-800 text-center animate-scale-up mt-10">
+                                <div className="w-20 h-20 bg-green-100 dark:bg-green-800 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600 dark:text-green-300 shadow-inner">
+                                    <CheckCircle2 size={40} />
+                                </div>
+                                <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Password Diperbarui!</h3>
+                                <p className="text-slate-500 dark:text-slate-400">Silakan login kembali menggunakan password baru Anda.</p>
+                                <div className="mt-6 flex items-center justify-center text-sm text-slate-400">
+                                    <RefreshCw size={16} className="mr-2 animate-spin" /> Mengalihkan ke Login...
+                                </div>
+                            </div>
+                        ) : forgotStep === 1 ? (
+                            // Step 1: Input Contact
+                            <form onSubmit={handleForgotCheckContact} className="space-y-5 animate-fade-in">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Email / No. HP Terdaftar</label>
+                                    <div className="relative group">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                                        <input 
+                                            required
+                                            type="text"
+                                            value={resetContact}
+                                            onChange={(e) => setResetContact(e.target.value)}
+                                            placeholder="Contoh: user@email.com"
+                                            className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all dark:text-white font-medium"
+                                        />
+                                    </div>
+                                    <p className="text-xs text-slate-400 mt-2 flex items-center">
+                                        <AlertCircle size={12} className="mr-1" />
+                                        Kami akan mengirimkan tautan verifikasi ke kontak ini.
+                                    </p>
+                                </div>
+
+                                <button 
+                                    type="submit"
+                                    disabled={resetLoading || !resetContact}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {resetLoading ? (
+                                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    ) : 'Lanjut Verifikasi'}
+                                </button>
+                            </form>
+                        ) : (
+                            // Step 2: Input New Password
+                            <form onSubmit={handleResetPassword} className="space-y-5 animate-scale-up">
+                                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl mb-4">
+                                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                                        Reset untuk: <span className="font-bold text-slate-800 dark:text-white">{resetContact}</span>
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Password Baru</label>
+                                    <div className="relative group">
+                                        <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                                        <input 
+                                            required
+                                            type="password"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="Masukkan password baru"
+                                            className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all dark:text-white font-medium"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Konfirmasi Password</label>
+                                    <div className="relative group">
+                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                                        <input 
+                                            required
+                                            type="password"
+                                            value={confirmNewPassword}
+                                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                                            placeholder="Ulangi password baru"
+                                            className={`w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:ring-4 outline-none transition-all dark:text-white font-medium ${
+                                                confirmNewPassword && newPassword !== confirmNewPassword 
+                                                ? 'border-red-500 focus:ring-red-500/20' 
+                                                : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500/20 focus:border-blue-500'
+                                            }`}
+                                        />
+                                    </div>
+                                    {confirmNewPassword && newPassword !== confirmNewPassword && (
+                                        <p className="text-xs text-red-500 mt-1 font-bold">Password tidak cocok.</p>
+                                    )}
+                                </div>
+
+                                <button 
+                                    type="submit"
+                                    disabled={resetLoading || !newPassword || newPassword !== confirmNewPassword}
+                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {resetLoading ? (
+                                        <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    ) : 'Simpan Password Baru'}
+                                </button>
+                            </form>
+                        )
+                    ) : activeTab === 'login' ? (
+                        // --- LOGIN FORM ---
+                        <form onSubmit={handleLoginSubmit} className="space-y-5 animate-fade-in">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Username</label>
+                                <div className="relative group">
+                                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                                    <input 
+                                        type="text"
+                                        name="username"
+                                        value={formData.username}
+                                        onChange={handleInputChange}
+                                        placeholder="Masukkan username"
+                                        className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all dark:text-white font-medium"
+                                    />
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div className="flex justify-between mb-2">
+                                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Password</label>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setActiveTab('forgot')}
+                                        className="text-xs font-bold text-blue-600 hover:underline"
+                                    >
+                                        Lupa Password?
+                                    </button>
+                                </div>
+                                <div className="relative group">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                                    <input 
+                                        type="password"
+                                        name="password"
+                                        value={formData.password}
+                                        onChange={handleInputChange}
+                                        placeholder="••••••••"
+                                        className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all dark:text-white font-medium"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Captcha Field - INLINED TO FIX FOCUS */}
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Kode Keamanan</label>
+                                     {captchaError && <span className="text-xs font-bold text-red-500 animate-pulse">Kode salah!</span>}
+                                </div>
+                                
+                                <div className="flex gap-3 h-14">
+                                    {/* Visual Captcha Box */}
+                                    <div 
+                                        className="flex-1 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center relative overflow-hidden select-none border-2 border-slate-200 dark:border-slate-600"
+                                        style={{ 
+                                            backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%239C92AC\' fill-opacity=\'0.15\' fill-rule=\'evenodd\'%3E%3Ccircle cx=\'3\' cy=\'3\' r=\'3\'/%3E%3Ccircle cx=\'13\' cy=\'13\' r=\'3\'/%3E%3C/g%3E%3C/svg%3E")' 
+                                        }}
+                                    >
+                                        {/* Clean, big text without blur */}
+                                        <div className="text-3xl font-mono font-black tracking-[0.5em] text-slate-800 dark:text-white z-10 skew-x-3 drop-shadow-sm">
+                                            {captchaCode}
+                                        </div>
+                                        
+                                        {/* Subtle Strike-through line */}
+                                        <div className="absolute w-full h-0.5 bg-slate-400/30 rotate-12 top-1/2 left-0 pointer-events-none"></div>
+                                    </div>
+                                    
+                                    {/* Refresh Button */}
+                                    <button 
+                                        type="button"
+                                        onClick={handleRefreshCaptcha}
+                                        className="px-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors text-slate-500 dark:text-slate-400 border-2 border-slate-200 dark:border-slate-600"
+                                        title="Ganti Kode"
+                                    >
+                                        <RefreshCw size={20} />
+                                    </button>
+                                </div>
+                                
+                                {/* Input Field */}
+                                <div className="relative group">
+                                     <Shield className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${captchaError ? 'text-red-400' : 'text-slate-400 group-focus-within:text-blue-500'}`} size={20} />
+                                    <input 
+                                        ref={captchaInputRef}
+                                        type="text"
+                                        value={captchaInput}
+                                        onChange={(e) => {
+                                            // Allow only alphanumeric input and limit length
+                                            const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                                            if (val.length <= 4) {
+                                                setCaptchaInput(val);
+                                                setCaptchaError(false);
+                                            }
+                                        }}
+                                        maxLength={4}
+                                        autoComplete="off"
+                                        placeholder="Ketik 4 karakter di atas"
+                                        className={`w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 rounded-xl focus:ring-4 outline-none transition-all dark:text-white font-bold text-lg uppercase tracking-widest ${
+                                            captchaError 
+                                            ? 'border-red-500 focus:ring-red-500/20 focus:border-red-600 placeholder:text-red-300 text-red-600' 
+                                            : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500/20 focus:border-blue-500'
+                                        }`}
+                                    />
+                                </div>
+                            </div>
+
+                            <button 
+                                type="submit"
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-0.5 active:translate-y-0 text-base"
+                            >
+                                Masuk Aplikasi
+                            </button>
+
+                             {/* Demo Login Shortcuts (Hidden for production simplicity, but kept for demo ease) */}
+                            <div className="mt-4 text-center">
+                                <button
+                                    type="button" 
+                                    onClick={selectedRole === 'admin' ? handleAdminLogin : handleCashierLogin}
+                                    className="text-xs text-slate-400 hover:text-blue-600 underline"
+                                >
+                                    (Demo: Klik untuk auto-login sebagai {selectedRole})
+                                </button>
+                            </div>
+
+                        </form>
+                    ) : (
+                        // --- REGISTER FLOW ---
+                        <>
+                            {registerSuccess ? (
+                                // SUCCESS STATE
+                                <div className="bg-green-50 dark:bg-green-900/20 p-8 rounded-2xl border border-green-200 dark:border-green-800 text-center animate-scale-up mt-10">
+                                    <div className="w-20 h-20 bg-green-100 dark:bg-green-800 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600 dark:text-green-300 shadow-inner">
+                                        <CheckCircle2 size={40} />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Akun Terverifikasi!</h3>
+                                    <p className="text-slate-500 dark:text-slate-400">Akun Anda berhasil dibuat sebagai <span className="font-bold text-green-600 dark:text-green-400 capitalize">{selectedRole}</span>.</p>
+                                    <div className="mt-6 flex items-center justify-center text-sm text-slate-400">
+                                        <RefreshCw size={16} className="mr-2 animate-spin" /> Mengalihkan...
+                                    </div>
+                                </div>
+                            ) : regStep === 1 ? (
+                                // STEP 1: INPUT DATA
+                                <form onSubmit={handleRegisterStep1} className="space-y-4 animate-fade-in">
+                                    <div className="hidden">
+                                        {/* Hidden Role Selector since it's already selected in previous screen, 
+                                            but kept in state logic if needed */}
+                                        <input type="hidden" value={selectedRole} />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Nama Lengkap</label>
+                                        <div className="relative group">
+                                            <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                                            <input 
+                                                required
+                                                type="text"
+                                                name="fullName"
+                                                value={formData.fullName}
+                                                onChange={handleInputChange}
+                                                placeholder="Nama Lengkap Anda"
+                                                className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all dark:text-white font-medium"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300">Metode Daftar</label>
+                                            <div className="flex bg-slate-100 dark:bg-slate-700 rounded-lg p-0.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setRegMethod('email'); setFormData({...formData, contact: ''}) }}
+                                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${regMethod === 'email' ? 'bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-300 shadow-sm' : 'text-slate-500'}`}
+                                                >
+                                                    Email
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setRegMethod('phone'); setFormData({...formData, contact: ''}) }}
+                                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${regMethod === 'phone' ? 'bg-white dark:bg-slate-600 text-green-600 dark:text-green-300 shadow-sm' : 'text-slate-500'}`}
+                                                >
+                                                    No. HP
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="relative group">
+                                            {regMethod === 'email' ? (
+                                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                                            ) : (
+                                                 <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-green-500 transition-colors" size={20} />
+                                            )}
+                                            <input 
+                                                required
+                                                type={regMethod === 'email' ? 'email' : 'tel'}
+                                                name="contact"
+                                                value={formData.contact}
+                                                onChange={handleInputChange}
+                                                placeholder={regMethod === 'email' ? "contoh@email.com" : "0812-xxxx-xxxx (WhatsApp)"}
+                                                className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all dark:text-white font-medium"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Password</label>
+                                        <div className="relative group">
+                                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                                            <input 
+                                                required
+                                                type="password"
+                                                name="password"
+                                                value={formData.password}
+                                                onChange={handleInputChange}
+                                                placeholder="Buat password kuat"
+                                                className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all dark:text-white font-medium"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Captcha Field Removed for Registration */}
+
+                                    <button 
+                                        type="submit"
+                                        disabled={isAnimating}
+                                        className="w-full bg-slate-800 dark:bg-blue-600 hover:bg-slate-700 dark:hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 text-base flex justify-center items-center mt-2"
+                                    >
+                                        {isAnimating ? (
+                                            <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        ) : (
+                                            <>
+                                                Kirim Kode Verifikasi <MessageSquare size={18} className="ml-2" />
+                                            </>
+                                        )}
+                                    </button>
+                                </form>
+                            ) : (
+                                // STEP 2: VERIFICATION (OTP)
+                                <form onSubmit={handleVerifyOtp} className="space-y-6 animate-scale-up">
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-2xl border border-blue-100 dark:border-blue-800 flex flex-col items-center text-center">
+                                        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center mb-3 text-blue-600 dark:text-blue-300">
+                                            {regMethod === 'email' ? <Mail size={24} /> : <Smartphone size={24} />}
+                                        </div>
+                                        <p className="text-sm text-slate-600 dark:text-slate-300">
+                                            Masukkan kode 6 digit yang telah dikirim ke:
+                                        </p>
+                                        <p className="font-bold text-slate-900 dark:text-white text-lg mt-1 break-all px-4">
+                                            {formData.contact}
+                                        </p>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setRegStep(1)}
+                                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-3 font-bold flex items-center"
+                                        >
+                                            <Edit2 size={12} className="mr-1" /> Ubah {regMethod === 'email' ? 'Email' : 'Nomor'}
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 text-center uppercase tracking-widest">
+                                            Kode Verifikasi (OTP)
+                                        </label>
+                                        <div className="relative">
+                                            <input 
+                                                required
+                                                type="text"
+                                                maxLength={6}
+                                                value={otpCode}
+                                                onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+                                                placeholder="------"
+                                                className="w-full px-4 py-4 text-center text-4xl tracking-[0.5em] font-extrabold bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all dark:text-white placeholder:text-slate-200 dark:placeholder:text-slate-700"
+                                                autoFocus
+                                            />
+                                        </div>
+                                        <p className="text-xs text-center text-slate-400 mt-3 flex justify-center items-center">
+                                            <ShieldCheck size={14} className="mr-1.5" /> 
+                                            Jangan berikan kode ini kepada siapa pun.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex flex-col gap-4">
+                                        <button 
+                                            type="submit"
+                                            disabled={isAnimating || otpCode.length < 6}
+                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 text-base flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+                                        >
+                                            {isAnimating ? (
+                                                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            ) : (
+                                                <>
+                                                    Verifikasi Akun <CheckCircle2 size={18} className="ml-2" />
+                                                </>
+                                            )}
+                                        </button>
+                                        
+                                        <div className="flex items-center justify-between text-sm px-1">
+                                            <span className="text-slate-500 dark:text-slate-400">Belum terima kode?</span>
+                                            {resendTimer > 0 ? (
+                                                <span className="font-bold text-slate-400 flex items-center bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                    <Timer size={14} className="mr-1.5 animate-pulse" /> 
+                                                    Kirim Ulang ({resendTimer}s)
+                                                </span>
+                                            ) : (
+                                                <button 
+                                                    type="button"
+                                                    onClick={handleResendOtp}
+                                                    className="font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline flex items-center transition-colors"
+                                                >
+                                                    <RefreshCw size={14} className="mr-1.5" /> Kirim Ulang Kode
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <button 
+                                            type="button"
+                                            onClick={() => setRegStep(1)}
+                                            className="w-full mt-2 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 font-bold py-3 rounded-xl transition-all text-sm flex justify-center items-center"
+                                        >
+                                            <ArrowLeft size={16} className="mr-2" /> Kembali ke Data Diri
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+                        </>
+                    )}
+                 </div>
+             )}
+
+          </div>
+       </div>
     </div>
   );
 };

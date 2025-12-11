@@ -133,10 +133,6 @@ const Cashier: React.FC<CashierProps> = ({
       setInitialPayAmount(grandTotal.toString());
     } else if (customPaymentStatus === PaymentStatus.UNPAID) {
       setInitialPayAmount('0');
-    } else if (customPaymentStatus === PaymentStatus.PARTIAL) {
-      // Default: Pay Deposit + 30% Rent
-      const suggested = depositCost + Math.ceil(rentalCost * 0.3);
-      setInitialPayAmount(suggested.toString());
     }
   }, [grandTotal, rentalCost, depositCost, customPaymentStatus]);
 
@@ -162,7 +158,8 @@ const Cashier: React.FC<CashierProps> = ({
     let finalPaidAmount = 0;
     if (customPaymentStatus === PaymentStatus.PAID) {
         finalPaidAmount = grandTotal;
-    } else if (customPaymentStatus === PaymentStatus.PARTIAL) {
+    } else {
+        // Default to manual input (usually 0 if unpaid)
         finalPaidAmount = parseInt(initialPayAmount) || 0;
     }
 
@@ -247,7 +244,7 @@ const Cashier: React.FC<CashierProps> = ({
       const newPaid = t.amountPaid + paidAmount;
       const grandTotal = t.totalAmount + t.depositAmount;
       
-      let pStatus = PaymentStatus.PARTIAL;
+      let pStatus = PaymentStatus.UNPAID; // Default to UNPAID if incomplete
       if (newPaid >= grandTotal) pStatus = PaymentStatus.PAID;
       
       return { ...t, amountPaid: newPaid, paymentStatus: pStatus };
@@ -375,6 +372,7 @@ const Cashier: React.FC<CashierProps> = ({
 
   // Helper to generate Invoice HTML string
   const getInvoiceHtml = (t: Transaction) => {
+    // ... (Invoice HTML Generation Code - No changes needed)
     const tenant = tenants.find(tn => tn.id === t.tenantId);
     const item = items.find(i => i.id === t.itemId);
     
@@ -383,8 +381,7 @@ const Cashier: React.FC<CashierProps> = ({
     const d2 = new Date(t.endDate);
     let durationMonths = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
     
-    // Edge case handling: If standard diff is 0 or negative (shouldn't happen), default to 1
-    // or fallback to day approximation if calendar diff seems off (e.g. less than 20 days but 1 month diff)
+    // Edge case handling
     const dayDiff = (d2.getTime() - d1.getTime()) / (1000 * 3600 * 24);
     if (durationMonths <= 0 || (durationMonths === 1 && dayDiff < 15)) {
          durationMonths = Math.max(1, Math.round(dayDiff / 30));
@@ -393,6 +390,10 @@ const Cashier: React.FC<CashierProps> = ({
     // Calculate price per month per unit (Round to avoid floating point errors)
     const pricePerMonth = Math.round(t.totalAmount / t.quantity / durationMonths);
     const grandTotal = t.totalAmount + t.depositAmount;
+
+    // Create many watermarks
+    const watermarkText = storeSettings.name;
+    const watermarkRepeats = Array(50).fill(`<div class="watermark-item">${watermarkText}</div>`).join('');
 
     return `
       <!DOCTYPE html>
@@ -403,24 +404,54 @@ const Cashier: React.FC<CashierProps> = ({
         <title>Invoice - ${t.id}</title>
         <style>
           @page { size: A4; margin: 20mm; }
-          body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 14pt; max-width: 800px; margin: 0 auto; color: #333; line-height: 1.6; }
-          .header { border-bottom: 3px solid #eee; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: start; }
+          body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 14pt; max-width: 800px; margin: 0 auto; color: #333; line-height: 1.6; position: relative; overflow-x: hidden; }
+          .watermark-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: space-around;
+            justify-content: space-around;
+            pointer-events: none;
+            overflow: hidden;
+            opacity: 0.6;
+          }
+          .watermark-item {
+            width: 180px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(-30deg);
+            font-size: 14px;
+            font-weight: 900;
+            color: rgba(200, 200, 200, 0.3);
+            text-transform: uppercase;
+            user-select: none;
+            text-align: center;
+            line-height: 1.2;
+          }
+          .header { border-bottom: 3px solid #eee; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: start; position: relative; z-index: 10; }
           .company-name { font-size: 28px; font-weight: bold; color: #2563eb; }
           .invoice-title { font-size: 36px; font-weight: bold; color: #1e293b; text-align: right; }
           .meta { text-align: right; color: #64748b; font-size: 16px; font-weight: bold; }
-          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; position: relative; z-index: 10; }
           .box { background: #f8fafc; padding: 25px; border-radius: 12px; border: 2px solid #e2e8f0; }
           .box h3 { margin-top: 0; font-size: 16px; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; margin-bottom: 10px; font-weight: bold; }
-          .table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+          .table { width: 100%; border-collapse: collapse; margin-bottom: 30px; position: relative; z-index: 10; }
           .table th { text-align: left; padding: 15px; background: #f1f5f9; border-bottom: 3px solid #e2e8f0; font-size: 14px; text-transform: uppercase; color: #475569; font-weight: bold; }
           .table td { padding: 15px; border-bottom: 1px solid #e2e8f0; font-size: 16px; }
-          .totals { width: 350px; margin-left: auto; font-size: 16px; }
+          .totals { width: 350px; margin-left: auto; font-size: 16px; position: relative; z-index: 10; }
           .total-row { display: flex; justify-content: space-between; padding: 10px 0; }
           .total-row.final { font-size: 22px; font-weight: bold; border-top: 3px solid #333; margin-top: 15px; padding-top: 15px; }
-          .payment-info { margin-top: 50px; display: flex; gap: 30px; border-top: 2px solid #eee; padding-top: 30px; }
+          .payment-info { margin-top: 50px; display: flex; gap: 30px; border-top: 2px solid #eee; padding-top: 30px; position: relative; z-index: 10; }
           .payment-details { flex: 1; font-size: 16px; }
           .qr-code { width: 120px; height: 120px; background: #eee; }
-          .footer { margin-top: 80px; text-align: center; color: #94a3b8; font-size: 14px; border-top: 2px solid #eee; padding-top: 20px; }
+          .footer { margin-top: 80px; text-align: center; color: #94a3b8; font-size: 14px; border-top: 2px solid #eee; padding-top: 20px; position: relative; z-index: 10; }
           .status { display: inline-block; padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: bold; }
           .paid { background: #dcfce7; color: #166534; }
           .unpaid { background: #fee2e2; color: #991b1b; }
@@ -435,6 +466,9 @@ const Cashier: React.FC<CashierProps> = ({
         </style>
       </head>
       <body>
+        <div class="watermark-container">
+            ${watermarkRepeats}
+        </div>
         <div class="header">
           <div>
             <div class="company-name">${storeSettings.name}</div>
@@ -467,7 +501,7 @@ const Cashier: React.FC<CashierProps> = ({
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 15px;">
               <span>Status Pembayaran:</span>
-              <span class="status ${t.paymentStatus === 'Lunas' ? 'paid' : t.paymentStatus === 'Belum Bayar' ? 'unpaid' : 'partial'}">${t.paymentStatus}</span>
+              <span class="status ${t.paymentStatus === 'Lunas' ? 'paid' : 'unpaid'}">${t.paymentStatus}</span>
             </div>
           </div>
         </div>
@@ -554,7 +588,7 @@ const Cashier: React.FC<CashierProps> = ({
   };
 
   const getReceiptHtml = (t: Transaction) => {
-    // ... (Keep existing receipt logic but check totals)
+      // ... (Receipt HTML Code - No Changes needed)
     const tenant = tenants.find(tn => tn.id === t.tenantId);
     
     // Fix: Exact month calculation
@@ -570,6 +604,10 @@ const Cashier: React.FC<CashierProps> = ({
     const grandTotal = t.totalAmount + (t.depositAmount || 0);
     const remaining = grandTotal - t.amountPaid;
 
+    // Create many watermarks
+    const watermarkText = storeSettings.name;
+    const watermarkRepeats = Array(50).fill(`<div class="watermark-item">${watermarkText}</div>`).join('');
+
     return `
       <!DOCTYPE html>
       <html lang="id">
@@ -577,8 +615,38 @@ const Cashier: React.FC<CashierProps> = ({
         <meta charset="UTF-8">
         <title>Kwitansi - ${t.id}</title>
         <style>
-          body { font-family: 'Courier New', Courier, monospace; max-width: 800px; margin: 0 auto; padding: 20px; color: #000; font-size: 16px; }
-          .receipt { border: 4px solid #000; padding: 40px; position: relative; }
+          body { font-family: 'Courier New', Courier, monospace; max-width: 800px; margin: 0 auto; padding: 20px; color: #000; font-size: 16px; position: relative; overflow-x: hidden; }
+          .watermark-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: space-around;
+            justify-content: space-around;
+            pointer-events: none;
+            overflow: hidden;
+            opacity: 0.6;
+          }
+          .watermark-item {
+            width: 180px;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(-30deg);
+            font-size: 14px;
+            font-weight: 900;
+            color: rgba(200, 200, 200, 0.3);
+            text-transform: uppercase;
+            user-select: none;
+            text-align: center;
+            line-height: 1.2;
+          }
+          .receipt { border: 4px solid #000; padding: 40px; position: relative; z-index: 10; background: transparent; }
           .header { text-align: center; border-bottom: 4px double #000; padding-bottom: 20px; margin-bottom: 40px; }
           .title { font-size: 32px; font-weight: bold; margin-bottom: 10px; letter-spacing: 3px; }
           .company { font-size: 18px; text-transform: uppercase; font-weight: bold; }
@@ -597,6 +665,9 @@ const Cashier: React.FC<CashierProps> = ({
         </style>
       </head>
       <body>
+        <div class="watermark-container">
+            ${watermarkRepeats}
+        </div>
         <div class="receipt">
           <div class="meta">
             <div>No: KW-${t.id.replace('TRX-', '')}</div>
@@ -682,6 +753,7 @@ const Cashier: React.FC<CashierProps> = ({
   };
 
   const handlePrintFilteredReport = () => {
+    // ... (Print Filtered Report Code - No Changes needed)
     const printContent = `
       <!DOCTYPE html>
       <html lang="id">
@@ -1194,7 +1266,8 @@ const Cashier: React.FC<CashierProps> = ({
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <div className="overflow-x-auto">
+                {/* --- DESKTOP TABLE VIEW --- */}
+                <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="bg-slate-100 dark:bg-slate-700/50 border-b-2 border-slate-200 dark:border-slate-600">
                             <tr>
@@ -1302,6 +1375,97 @@ const Cashier: React.FC<CashierProps> = ({
                             )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* --- MOBILE CARD VIEW --- */}
+                <div className="md:hidden p-4 space-y-4 bg-slate-50 dark:bg-slate-900/50">
+                    {filteredTransactions.length === 0 ? (
+                        <div className="text-center py-12 text-slate-400 italic">
+                            Tidak ada transaksi yang sesuai dengan filter.
+                        </div>
+                    ) : (
+                        filteredTransactions.map(t => {
+                            const tenant = tenants.find(tn => tn.id === t.tenantId);
+                            const isOverdue = (new Date(t.endDate) < new Date() && t.status !== TransactionStatus.COMPLETED) || t.status === TransactionStatus.OVERDUE;
+                            const isCompleted = t.status === TransactionStatus.COMPLETED;
+                            const isPaid = t.paymentStatus === PaymentStatus.PAID;
+
+                            return (
+                                <div key={t.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-3">
+                                    <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-3">
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{t.id}</span>
+                                                <span className="text-xs text-slate-400">{new Date(t.startDate).toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}</span>
+                                            </div>
+                                        </div>
+                                        {isCompleted ? (
+                                            <span className="text-[10px] font-bold bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-2 py-1 rounded-lg border border-green-200 dark:border-green-800 flex items-center">
+                                                <Check size={10} className="mr-1" /> Selesai
+                                            </span>
+                                        ) : isOverdue ? (
+                                                <span className="text-[10px] font-bold bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-2 py-1 rounded-lg border border-red-200 dark:border-red-800 flex items-center">
+                                                <AlertTriangle size={10} className="mr-1" /> Terlambat
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] font-bold bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-800 flex items-center">
+                                                <Clock size={10} className="mr-1" /> Disewa
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <div className="font-bold text-slate-900 dark:text-white text-base mb-1">{t.itemName}</div>
+                                        <div className="flex items-center text-sm text-slate-600 dark:text-slate-300">
+                                            <User size={14} className="mr-1.5 text-slate-400" />
+                                            {tenant?.name || 'Unknown'}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-end bg-slate-50 dark:bg-slate-700/50 p-3 rounded-lg">
+                                        <div>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-0.5">Pembayaran</p>
+                                            <p className={`text-xs font-bold uppercase ${isPaid ? 'text-green-600' : 'text-orange-600'}`}>
+                                                {t.paymentStatus}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-bold text-slate-900 dark:text-white">Rp {t.amountPaid.toLocaleString('id-ID')}</p>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Total: Rp {(t.totalAmount + t.depositAmount).toLocaleString('id-ID')}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-4 gap-2 pt-2">
+                                        <button 
+                                            onClick={() => handleViewDetail(t)}
+                                            className="col-span-1 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-slate-600 dark:text-slate-300 hover:text-blue-600 rounded-lg flex justify-center items-center"
+                                        >
+                                            <Eye size={18} />
+                                        </button>
+                                        <button 
+                                            onClick={() => openPaymentModal(t)}
+                                            disabled={isPaid}
+                                            className="col-span-1 py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/40 text-green-600 dark:text-green-400 rounded-lg flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <Banknote size={18} />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleEditClick(t)}
+                                            className="col-span-1 py-2 bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/40 text-orange-600 dark:text-orange-400 rounded-lg flex justify-center items-center"
+                                        >
+                                            <Edit2 size={18} />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteClick(t.id)}
+                                            className="col-span-1 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg flex justify-center items-center"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
                 </div>
             </div>
         </div>

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Transaction, Item, Tenant, TransactionStatus, ItemStatus, StoreSettings } from '../types';
-import { AlertCircle, TrendingUp, Calendar, AlertTriangle, Layers, Clock, Users, CheckCircle2, ArrowRight, PackageX } from 'lucide-react';
+import { AlertCircle, TrendingUp, Calendar, AlertTriangle, Layers, Clock, Users, CheckCircle2, ArrowRight, PackageX, Package, User } from 'lucide-react';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -113,23 +113,48 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, items, tenants, sto
             </p>
         </div>
 
-        {/* Card 2: Total Stock */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow relative group">
-            <div className="flex justify-between items-start mb-4">
-                <div>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Stok Tersedia</p>
-                    <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">{stats.totalAvailableStock}</h3>
+        {/* Card 2: Total Stock (With Hover Highlight) */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow relative group overflow-hidden">
+            {/* Default Content (Visible when not hovering) */}
+            <div className="transition-opacity duration-300 group-hover:opacity-10">
+                <div className="flex justify-between items-start mb-4">
+                    <div>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Stok Tersedia</p>
+                        <h3 className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">{stats.totalAvailableStock}</h3>
+                    </div>
+                    <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl text-purple-600 dark:text-purple-400 transition-transform">
+                        <Layers size={24} />
+                    </div>
                 </div>
-                <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
-                    <Layers size={24} />
+                <div className="flex flex-wrap gap-2 mt-2">
+                    {stats.categoryStockList.slice(0, 3).map((cat, idx) => (
+                        <span key={idx} className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800">
+                            {cat.name}: {cat.count}
+                        </span>
+                    ))}
+                    {stats.categoryStockList.length > 3 && (
+                        <span className="text-xs text-slate-400 font-bold self-center">...</span>
+                    )}
                 </div>
             </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-                {stats.categoryStockList.slice(0, 2).map((cat, idx) => (
-                    <span key={idx} className="inline-flex items-center px-2 py-1 rounded text-xs font-bold bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-800">
-                        {cat.name}: {cat.count}
-                    </span>
-                ))}
+
+            {/* Hover Content (Overlay List) */}
+            <div className="absolute inset-0 bg-white dark:bg-slate-800 p-5 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col z-10 translate-y-4 group-hover:translate-y-0">
+                 <div className="flex items-center justify-between mb-3 border-b border-slate-100 dark:border-slate-700 pb-2">
+                    <p className="text-xs font-bold uppercase text-purple-600 dark:text-purple-400 tracking-wider">Rincian Semua Stok</p>
+                    <Layers size={14} className="text-slate-400"/>
+                 </div>
+                 <div className="flex-1 overflow-y-auto pr-2 space-y-2 no-scrollbar">
+                    {stats.categoryStockList.map((cat, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-sm group/item hover:bg-slate-50 dark:hover:bg-slate-700/50 p-1.5 rounded-lg transition-colors">
+                            <span className="text-slate-600 dark:text-slate-300 font-medium">{cat.name}</span>
+                            <span className="font-bold text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md text-xs">{cat.count}</span>
+                        </div>
+                    ))}
+                    {stats.categoryStockList.length === 0 && (
+                        <p className="text-center text-xs text-slate-400 italic mt-4">Stok habis</p>
+                    )}
+                 </div>
             </div>
         </div>
 
@@ -163,8 +188,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, items, tenants, sto
         
         {/* LEFT COLUMN: ACTIVE RENTALS MONITOR (Span 2) */}
         <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
-                <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col h-[600px] md:h-auto">
+                <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800 sticky top-0 z-20">
                     <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center">
                         <Clock className="mr-3 text-blue-600 dark:text-blue-400" size={20} />
                         Monitor Sewa Aktif
@@ -174,8 +199,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, items, tenants, sto
                     </span>
                 </div>
                 
-                {/* SCROLLABLE TABLE CONTAINER */}
-                <div className="overflow-x-auto max-h-[500px] overflow-y-auto relative no-scrollbar">
+                {/* --- DESKTOP TABLE VIEW --- */}
+                <div className="hidden md:block overflow-x-auto max-h-[500px] overflow-y-auto relative no-scrollbar">
                     <table className="w-full text-left border-collapse">
                         <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-700/90 text-slate-500 dark:text-slate-400 text-xs uppercase font-bold tracking-wider shadow-sm backdrop-blur-sm">
                             <tr>
@@ -245,7 +270,67 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, items, tenants, sto
                         </tbody>
                     </table>
                 </div>
-                <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-center">
+
+                {/* --- MOBILE CARD VIEW --- */}
+                <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-900/50">
+                    {activeTransactions.length === 0 ? (
+                        <div className="text-center py-12 text-slate-400 italic">
+                            Tidak ada penyewaan aktif saat ini.
+                        </div>
+                    ) : (
+                        activeTransactions.map(t => {
+                            const tenantName = getTenantName(t.tenantId);
+                            const dueDate = new Date(t.endDate);
+                            const today = new Date();
+                            const diffTime = dueDate.getTime() - today.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            const isLate = diffDays < 0;
+
+                            return (
+                                <div key={t.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-3">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold border border-blue-200 dark:border-blue-800 shrink-0">
+                                                {tenantName.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-900 dark:text-white text-sm">{tenantName}</p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">{t.id}</p>
+                                            </div>
+                                        </div>
+                                        {isLate ? (
+                                            <span className="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 text-[10px] font-bold px-2 py-1 rounded-lg border border-red-200 dark:border-red-800">
+                                                Telat {Math.abs(diffDays)} Hr
+                                            </span>
+                                        ) : (
+                                            <span className="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-[10px] font-bold px-2 py-1 rounded-lg border border-green-200 dark:border-green-800">
+                                                {diffDays} Hr Lagi
+                                            </span>
+                                        )}
+                                    </div>
+                                    
+                                    <div className="pl-[52px]">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Package size={14} className="text-slate-400" />
+                                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 line-clamp-1">{t.itemName}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded text-xs font-bold text-slate-600 dark:text-slate-300">
+                                                Qty: {t.quantity}
+                                            </div>
+                                            <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center">
+                                                <Calendar size={12} className="mr-1" />
+                                                Sampai {dueDate.toLocaleDateString('id-ID', {day: 'numeric', month: 'short'})}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+
+                <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-center sticky bottom-0 z-20">
                     <button 
                         onClick={onViewAllTransactions}
                         className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline flex items-center justify-center mx-auto"

@@ -33,7 +33,6 @@ export enum TransactionStatus {
 
 export enum PaymentStatus {
   PAID = 'Lunas',
-  PARTIAL = 'Cicil/DP',
   UNPAID = 'Belum Bayar',
 }
 
@@ -70,4 +69,5 @@ export interface StoreSettings {
   accountNumber: string;
   accountName: string;
   qrisUrl: string;
+  adminPin: string; // New field for dynamic Admin PIN
 }

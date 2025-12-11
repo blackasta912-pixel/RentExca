@@ -44,7 +44,8 @@ const App: React.FC = () => {
     bankName: 'BCA',
     accountNumber: '8830-1234-5678',
     accountName: 'RentalScaffolding Corporate',
-    qrisUrl: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg'
+    qrisUrl: 'https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg',
+    adminPin: '123456' // Default PIN
   });
 
   // Navigation State
@@ -83,8 +84,8 @@ const App: React.FC = () => {
     setIsDarkMode(!isDarkMode);
   };
 
-  const handleLogin = () => {
-    setUser({ username: 'admin', name: 'Admin User', role: 'admin' });
+  const handleLogin = (userData: User) => {
+    setUser(userData);
   };
 
   const handleLogout = () => {
@@ -177,6 +178,7 @@ const App: React.FC = () => {
           <Admin 
             settings={storeSettings}
             onUpdateSettings={setStoreSettings}
+            currentUser={user}
           />
         );
       default:
@@ -230,13 +232,19 @@ const App: React.FC = () => {
               <span className="text-xl font-bold text-slate-800 dark:text-white tracking-tight truncate">{storeSettings.name}</span>
             </div>
 
-            <button
-              onClick={toggleDarkMode}
-              className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-yellow-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-              title={isDarkMode ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
-            >
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
+            <div className="flex items-center gap-4">
+                <div className="hidden md:flex flex-col items-end">
+                    <span className="text-sm font-bold text-slate-800 dark:text-white">{user.name}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase">{user.role === 'admin' ? 'Administrator' : 'Kasir'}</span>
+                </div>
+                <button
+                onClick={toggleDarkMode}
+                className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-yellow-400 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                title={isDarkMode ? "Ganti ke Mode Terang" : "Ganti ke Mode Gelap"}
+                >
+                {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
+            </div>
           </div>
 
           {renderContent()}

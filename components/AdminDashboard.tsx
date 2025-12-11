@@ -17,11 +17,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ transactions, items, st
   const [error, setError] = useState('');
   const [reportDate, setReportDate] = useState(new Date());
 
-  const CORRECT_PIN = '123456'; // Default PIN
-
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === CORRECT_PIN) {
+    if (pin === storeSettings.adminPin) {
       setIsAuthenticated(true);
       setError('');
     } else {
@@ -250,7 +248,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ transactions, items, st
               Buka Akses
             </button>
           </form>
-          <p className="text-xs text-slate-400 mt-4 italic">Default PIN: 123456</p>
+          <p className="text-xs text-slate-400 mt-4 italic">Hubungi pemilik jika lupa PIN.</p>
         </div>
       </div>
     );

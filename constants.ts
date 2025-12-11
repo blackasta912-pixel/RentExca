@@ -45,7 +45,7 @@ export const MOCK_TRANSACTIONS: Transaction[] = [
     depositAmount: 500000,
     isDepositReturned: false,
     amountPaid: 2000000, // Paid Deposit (500k) + Partial Rent (1.5m)
-    paymentStatus: PaymentStatus.PARTIAL, 
+    paymentStatus: PaymentStatus.UNPAID, // Changed from PARTIAL to UNPAID
     status: TransactionStatus.ACTIVE 
   },
   { 
