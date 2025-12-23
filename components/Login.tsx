@@ -598,17 +598,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                                 Masuk Aplikasi
                             </button>
 
-                             {/* Demo Login Shortcuts (Hidden for production simplicity, but kept for demo ease) */}
-                            <div className="mt-4 text-center">
-                                <button
-                                    type="button" 
-                                    onClick={selectedRole === 'admin' ? handleAdminLogin : handleCashierLogin}
-                                    className="text-xs text-slate-400 hover:text-blue-600 underline"
-                                >
-                                    (Demo: Klik untuk auto-login sebagai {selectedRole})
-                                </button>
-                            </div>
-
                         </form>
                     ) : (
                         // --- REGISTER FLOW ---
